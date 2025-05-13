@@ -96,16 +96,13 @@ db.create_collection('PlantIndex')
 plant_index_validator = {
             '$jsonSchema': {
                 'bsonType': 'object',
-                'required': ['plant_id', 'time', 'value', 'NDVI','GNDVI', 'rgb_id', 'nir_id', 'image_path'],
+                'required': ['plant_id', 'time', 'NDVI', 'rgb_id', 'nir_id', 'image_path'],
                 'properties': {
                     'plant_id': {'bsonType': 'objectId'},
                     'time': {'bsonType': 'timestamp'},
-                    'value': {'bsonType': 'double'},
                     'NDVI': {'bsonType': 'array'},
-                    'GNDVI': {'bsonType': 'array'},
                     #maybe more index
-                    'rgb_id': {'bsonType': 'objectId'},
-                    'nir_id': {'bsonType': 'objectId'},
+                    'image2analysis': {'bsonType': 'objectId'},
                     'image_path': {'bsonType': 'string'}
                 }
             }
