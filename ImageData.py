@@ -3,7 +3,7 @@ import socket
 import Master2Slave
 import datetime
 import os
-
+import PlantIndex
 
 class ImageData:
     def __init__(self, plant_id='plant1'):
@@ -91,11 +91,14 @@ class ImageData:
         nir_path = self.capture_nir_image(formatted_time)
         
         if rgb_path and nir_path:
-            self.save_image_data(
+            data = self.save_image_data(
                 rgb_path,
                 nir_path,
                 formatted_time
             )
+        #imgid = self.find_one({'time': formatted_time})
+        
+        #PlantIndex.PlantIndex(imgid.get('_id'), imgid.get('time')).analysis_save_plant_index()
         print('success________________________________________________________')
     def find_one(self,query = None):
         if query != None:
