@@ -98,12 +98,12 @@ plant_index_validator = {
                 'bsonType': 'object',
                 'required': ['plant_id', 'time', 'NDVI', 'rgb_id', 'nir_id', 'image_path'],
                 'properties': {
-                    'plant_id': {'bsonType': 'objectId'},
+                    #'plant_id': {'bsonType': 'objectId'},
                     'time': {'bsonType': 'timestamp'},
                     'NDVI': {'bsonType': 'array'},
                     #maybe more index
                     'image2analysis': {'bsonType': 'objectId'},
-                    'image_path': {'bsonType': 'string'}
+                    #'image_path': {'bsonType': 'string'}
                 }
             }
         }
