@@ -1,7 +1,6 @@
 import streamlit as st
 from datetime import datetime, timedelta
 import time
-import sensordata as ss
 import SensorData as SS
 import pandas as pd
 from streamlit_option_menu import option_menu
@@ -10,8 +9,10 @@ import asyncio
 import threading
 from streamlit.runtime.scriptrunner import add_script_run_ctx
 from streamlit_autorefresh import st_autorefresh
-
-
+import os
+import ImageData
+import cv2
+from multiprocessing.pool import ThreadPool
 
 def main_page():
     current_page = slidebar()
@@ -25,81 +26,107 @@ def main_page():
 
     elif current_page == 'Chart':
         st.title('Chart')
-        selectbox = st.selectbox('Choose an option: ',['24 hours',' 7 days','1 month' ])
-        
-        if selectbox == '24 hours':
-            create24hchart()
-        if selectbox == '7 days':
-            create7dchart()
-        if selectbox == '1 month':
-            create30dchart()
-#   st.
+        listplant = Plants.Plant().findmany()
+        ids = [item['_id'] for item in listplant]
+        col1, col2, col3 = st.columns(3)
 
-def create30dchart():
+        with col1:
+            selecttime = st.selectbox('Choose an option: ',['24 hours','7 days','1 month' ])
+        with col3:
+            selecttype = st.selectbox('Choose an option: ',['Light','Temperature, Humidity','CO2' ])
+        with col2:
+            selectplant = st.selectbox('Choose an option: ',   ids)
+            
+        if selecttime == '24 hours':
+            deltatime = datetime.now() - timedelta(hours=24)
+            light,t,h,co2 = get_data_base_time(deltatime,selectplant)
+            if selecttype == 'Light':
+                createchart(light)
+            if selecttype == 'Temperature, Humidity':
+                createchart(t,h)
+            if selecttype == 'CO2':
+                createchart(co2)
+                
+        if selecttime == '7 days':
+            deltatime = datetime.now() - timedelta(days= 7)
+            light,t,h,co2 = get_data_base_time(deltatime,selectplant)
+            if selecttype == 'Light':
+                createchart(light)
+            if selecttype == 'Temperature, Humidity':
+                createchart(t,h)
+            if selecttype == 'CO2':
+                createchart(co2)
+                
+        if selecttime == '1 month':
+            deltatime = datetime.now() - timedelta(days=30)
+            light,t,h,co2 = get_data_base_time(deltatime,selectplant)
+            if selecttype == 'Light':
+                createchart(light)
+            if selecttype == 'Temperature, Humidity':
+                createchart(t,h)
+            if selecttype == 'CO2':
+                createchart(co2)
+            
+    elif current_page == 'Analysis':
+        st.title("Plant Timelapse Analysis")
+        listplant = Plants.Plant().findmany()
+        ids = [item['_id'] for item in listplant]
+        selectplant = st.selectbox('Choose an option: ',   ids)
+        if selectplant:
+            show_timelapse(selectplant)
+
+def createchart(datalist, temp = None):
+    if temp != None:
+        df = pd.DataFrame({'Temperature': datalist,
+                            'Humidity': temp })
+        st.line_chart(df, x_label = 'Total Value', y_label = 'Value', color=[ "#0000FF","#FF0000"])
+    else:
+        df = pd.DataFrame(datalist)
+        st.line_chart(df,x_label = 'Total Value', y_label = 'Value')
+
+def get_data_base_time(time,plant_id):
     sensor = SS.SensorData()
-    #temp = sensor.findone({'plant_id': 'plant1'}).get('time')
-    
-    deltatime = datetime.now() - timedelta(day=30)
-    query = {
-        "$expr": {
-            "$gt": [
-                {
-                    "$dateFromString": {
-                        "dateString": "$time",  
-                        "format": "%d-%m-%Y_%H:%M"  
+    query = [
+    {
+        '$match': {
+            '$expr': {
+                '$and': [
+                    {
+                        '$gt': [
+                            {
+                                '$dateFromString': {
+                                    'dateString': '$time',
+                                    'format': '%d-%m-%Y_%H:%M'
+                                }
+                            },
+                            time.strftime('%d-%m-%Y_%H:%M')
+                        ]
+                    },
+                    {
+                        '$eq': ['$plant_id', plant_id]
                     }
-                },
-                deltatime
-            ]
+                ]
+            }
         }
     }
-    listsensor = sensor.findmany(query)
-    for doc in listsensor:
-        st.write(doc)
-
-def create7dchart():
-    sensor = SS.SensorData()
-    #temp = sensor.findone({'plant_id': 'plant1'}).get('time')
+]
+    listsensor = sensor.aggregate(query)
+    light = []
+    h = []
+    t = []
+    co2 = []
     
-    deltatime = datetime.now() - timedelta(day=7)
-    query = {
-        "$expr": {
-            "$gt": [
-                {
-                    "$dateFromString": {
-                        "dateString": "$time",  
-                        "format": "%d-%m-%Y_%H:%M"  
-                    }
-                },
-                deltatime
-            ]
-        }
-    }
-    listsensor = sensor.findmany(query)
-    for doc in listsensor:
-        st.write(doc)
-
-def create24hchart():
-    sensor = SS.SensorData()
-    #temp = sensor.findone({'plant_id': 'plant1'}).get('time')
-    
-    deltatime = datetime.now() - timedelta(hours=24)
-    query = {
-        "$expr": {
-            "$gt": [
-                {
-                    "$dateFromString": {
-                        "dateString": "$time",  
-                        "format": "%d-%m-%Y_%H:%M"  
-                    }
-                },
-                deltatime
-            ]
-        }
-    }
-    listsensor = sensor.findmany(query)
-    for doc in listsensor:
-        st.write(doc)
+    for item in listsensor:
+        for value in item['values']:
+            if value['type'] == 'light':
+                light.append(value['value'])
+            elif value['type'] == 'temperature':
+                t.append(value['value'])   
+            elif value['type'] == 'humidity':
+                h.append(value['value'])   
+            else:
+                co2.append(value['value'])       
+    return light,t,h,co2
 
     
 
@@ -310,5 +337,134 @@ def slidebar():
             default_index = 0,
     )
     return selected
+    
+def get_sorted_images(plant_id):
+    pipeline = [
+        {
+            '$match': {
+                'plant_id': plant_id
+                    },
+        },
+        {
+            '$project': 
+            {
+                'plant_id':1,
+                'time': 
+                {
+                '$dateFromString': 
+                    {
+                    'dateString': '$time',
+                    'format': '%d-%m-%Y_%H:%M'
+                    }
+                },
+                 'values': {
+                        '$map': {
+                            'input': '$values',
+                            'as': 'value',
+                            'in': { 'path': '$$value.path' ,'type': '$$value.type' }
+                        }
+                    }
+            }
+        },
+        { '$sort': { 'time' : 1} } ] 
+
+    colle = ImageData.ImageData(plant_id) 
+    temp = colle.find_time(pipeline)
+    rgb = []
+    nir = []
+    for item in temp:
+        if 'values' in item and isinstance(item['values'], list):
+            for value_item in item['values']:
+                if 'type' in value_item and 'path' in value_item:
+                    if value_item['type'] == 'rgb':
+                        rgb.append(value_item['path'])
+                    elif value_item['type'] == 'nir':
+                        nir.append(value_item['path'])
+                        
+    return rgb,nir
+
+def process_image(path,resize_ratio=0.8, quality = 0.8):
+    img = cv2.imread(path)
+
+    if resize_ratio != 1:
+        h, w = img.shape[:2]
+        
+        img = cv2.resize(
+            img,
+            (int(w * resize_ratio), int(h * resize_ratio)),
+             interpolation=cv2.INTER_AREA
+        )
+    return img
+
+@st.cache_data
+def create_timelapse(image_paths, output_path, fps=24):
+    
+    
+
+    
+    frame = cv2.imread(image_paths[0])
+
+    height, width, _ = frame.shape
+    
+    
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')  
+    video = cv2.VideoWriter(output_path, fourcc, fps, (int(width*0.8),int(height*0.8)))
+    
+    if not video.isOpened():
+        st.error("Failed to create video file")
+        return False
+
+   
+    frames=[]
+    success_count = 0
+    with ThreadPool(os.cpu_count()) as pool:  
+        frames = pool.map(process_image, image_paths)
+        
+    for frame in frames:
+        if frame is not None:
+            video.write(frame)
+
+        success_count += 1
+
+        if success_count % 100 == 0:
+            gc.collect()
+
+    video.release()
+    return True
+
+def show_timelapse(plant_id):
+    
+
+    os.makedirs('/home/gnas/Desktop/thesis', exist_ok=True)
+    
+    rgb_paths, nir_paths = get_sorted_images(plant_id)
+    col1, col2 = st.columns(2)
+    
+
+    rgb_video_path = '/home/gnas/Desktop/thesis/rgb_timelapse.mp4'
+    nir_video_path = '/home/gnas/Desktop/thesis/nir_timelapse.mp4'
+    
+    
+    st.subheader("RGB Timelapse")
+    if rgb_paths:
+        if create_timelapse(rgb_paths, rgb_video_path):
+            st.video(rgb_video_path)
+            open(rgb_video_path, "rb") 
+        else:
+            st.error("Failed to create RGB timelapse")
+    else:
+        st.warning("No RGB images found")
+
+
+    st.subheader("NIR Timelapse")
+    if nir_paths:
+        if create_timelapse(nir_paths, nir_video_path):
+                st.video(nir_video_path)
+                open(nir_video_path, "rb") 
+        else:
+            st.error("Failed to create NIR timelapse")
+    else:
+        st.warning("No NIR images found")
+
 if __name__ == "__main__":
     main_page()

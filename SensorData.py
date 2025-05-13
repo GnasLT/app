@@ -115,7 +115,12 @@ class SensorData:
         if query != None:
             return self.collection.find(query)
         return list(self.collection.find(query).sort("timestamp", -1))
-    
+        
+    def aggregate(self, pipe = None):
+        if pipe != None:
+            return self.collection.aggregate(pipe)
+        return None
+        
     def findone(self, query = None):
         if query != None:
             return self.collection.find_one(query)

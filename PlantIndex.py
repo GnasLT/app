@@ -8,7 +8,7 @@ class PlantIndex:
         self.ndvi = self.analysis()
         
     def analysis(self):
-        
+        pass
         
     def image_alignment(self):
-        
+        pass

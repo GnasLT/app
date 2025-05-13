@@ -106,3 +106,10 @@ class ImageData:
         if query != None:
             return self.collection.find(query)
         return list(self.collection.find(query).sort("timestamp", -1))
+    
+    def find_time(self, query = None):
+        if query != None:
+            return self.collection.aggregate(query)
+        return None
+        
+    
